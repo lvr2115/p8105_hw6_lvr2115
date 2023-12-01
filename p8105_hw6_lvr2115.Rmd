@@ -34,7 +34,7 @@ weather_df =
   select(name, id, everything())
 ```
 
-This code creates a simple linear regression model with 'tmax' as the response with 'tmin' and 'prcp' as the predictors. 
+This code creates a multiple linear regression model with 'tmax' as the response with 'tmin' and 'prcp' as the predictors. 
 
 ```{r}
 fit = lm(tmax ~ tmin + prcp, data = weather_df)
@@ -48,6 +48,20 @@ fit |>
 
 Use 5000 bootstrap samples and, for each bootstrap sample, produce estimates of these two quantities. Plot the distribution of your estimates, and describe these in words. Using the 5000 bootstrap estimates, identify the 2.5% and 97.5% quantiles to provide a 95% confidence interval for r^2  and log(β1∗β 2).
 
+
+```{r}
+weather_df_samples =
+  weather_df |> 
+  modelr::bootstrap(n = 500, id="strap_number") |> 
+  mutate(
+    models = map(.x=strap, ~lm(tmax ~ tmin + prcp, data = .x)),
+    results = map(.x=models, broom::tidy)) |> 
+  select(strap_number, results) |>
+  unnest(results) |> 
+  ggplot(aes(x = r.squared)) + geom_density()
+```
+
+
 Note: broom::glance() i- r^2 from a fitted regression,
       broom::tidy() (with some additional wrangling) should help in computing log(β̂ 1∗β̂ 2)
 ```{r}
@@ -55,6 +69,10 @@ fit |>
   broom::glance() |> 
   select(r.squared) |> 
   knitr::kable(digits = 3)
+```
+
+
+```{r}
 
 beta1 = coef(fit)[2]
 beta2 = coef(fit)[3]
@@ -67,10 +85,4 @@ fit |>
   )
 ```
 
-```{r}
-fit |>
-  ggplot(aes(x=tmin, y=tmax))+
-  geom_point()+
-  geom_smooth(method="lm", formula = tmax ~ tmin + prcp, se = FALSE, color = "blue") 
-```
 
