@@ -63,12 +63,10 @@ weather_r2 |>
 
 #confidence intervals
 weather_r2|>
-  group_by(strap_number) |> 
   summarize(
     ci_lower = quantile(r.squared, 0.025), 
     ci_upper = quantile(r.squared, 0.975))
 ```
-
 
 ```{r dist of log of b1*b2 with plot}
 #bootstrapping
@@ -94,7 +92,6 @@ weather_log |>
 
 #confidence intervals 
 weather_log|>
-  group_by(strap_number) |> 
   summarize(
     ci_lower = quantile(log_product, 0.025), 
     ci_upper = quantile(log_product, 0.975))
@@ -164,7 +161,5 @@ modelr::add_residuals(birthweight, fit) |>
 modelr::add_residuals(birthweight, fit) |>
   ggplot(aes(x = gaweeks, y = resid)) + geom_violin() +
   facet_wrap(.~frace)
-
-
 ```
 
