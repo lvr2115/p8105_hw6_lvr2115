@@ -100,3 +100,71 @@ weather_log|>
     ci_upper = quantile(log_product, 0.975))
 ```
 
+# Problem 3
+
+```{r import and clean data, message=FALSE}
+birthweight = 
+  read_csv("./birthweight.csv") |>
+  janitor::clean_names(case="snake") |>
+  drop_na() |>
+  mutate(
+    babysex = as.factor(babysex),
+    frace = as.factor(frace),
+    malform = as.factor(malform),
+    mrace = as.factor(mrace))
+```
+
+```{r full model}
+fit = lm(bwt ~ ., data = birthweight)
+
+fit |>
+  ggplot(aes(x=, y = bwt)) +geom_point()
+         
+fit |>
+  broom::tidy() |>
+  select(term, estimate, p.value) |> 
+  knitr::kable(digits = 3)
+
+#significant coefficients per pvalue: babysex2, bhead,blength,delwt,gaweeks
+```
+
+```{r compare to other 2 models}
+fit2 = lm(bwt~blength+gaweeks, data=birthweight)
+
+fit3 = lm(bwt~bhead*blength+bhead*babysex+blength*babysex, data=birthweight)
+```
+
+Model 1:
+```{r}
+birthweight |>
+  add_predictions(fit2) |> 
+  ggplot(aes(x=, y=bwt)) + 
+  geom_point() +
+  geom_line(aes(y=pred), color="red")
+```
+
+
+Model 2:
+```{r}
+birthweight |>
+  add_predictions(fit3) |> 
+  ggplot(aes(y=bwt)) + 
+  geom_point() +
+  geom_line(aes(y=pred), color="red")
+```
+
+
+This model may be based on a hypothesized structure for the factors that underly birthweight, on a data-driven model-building process, or a combination of the two. Describe your modeling process and show a plot of model residuals against fitted values – use add_predictions and add_residuals in making this plot.
+
+```{r plot of model residuals vs fitted values}
+modelr::add_residuals(birthweight, fit) |>
+  ggplot(aes(x = babysex, y = resid)) + geom_violin() +
+  facet_wrap(.~frace)
+
+modelr::add_residuals(birthweight, fit) |>
+  ggplot(aes(x = gaweeks, y = resid)) + geom_violin() +
+  facet_wrap(.~frace)
+
+
+```
+
