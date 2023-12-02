@@ -163,7 +163,7 @@ The slope of this line is ~0, as indicated by the fact it appears horizontal. Th
 
 ```{r}
 cv_df =
-  crossv_mc(birthweight, 100)  #80 cross validation runs
+  crossv_mc(birthweight, 100)  #100 cross validation runs
 
 cv_df = 
   cv_df |> 
