@@ -133,12 +133,16 @@ birthweight =
 
 ## Proposing a model
 
-I propose that the predictors that could affect bw and should be in my model are: gestational age at birth (gaweeks), mother's pre-pregnancy BMI (ppbmi), maternal race (mrace) and average number of cigarettes smoked per day during pregnancy (smoken). I removed observations in my dataset in which there is a malformation that could affect birthweight present, as there are only 15 observations in which there is a malformation and I would consider them outliers in this case as malformations are not a predictor of interest. 
+I propose that the predictors that could affect bw and should be in my model are: gestational age at birth (gaweeks), mother's pre-pregnancy BMI (ppbmi), maternal race (mrace) and average number of cigarettes smoked per day during pregnancy (smoken). This model is based on the factors I know from working in the MCH field previously are most likely to have an effect on bw. I removed observations in my dataset in which there is a malformation that could affect birthweight present, as there are only 15 observations in which there is a malformation and I would consider them outliers in this case as malformations are not a predictor of interest. 
 
 ```{r}
-model =lm(bwt~gaweeks+ppbmi+mrace+smoken, data=birthweight)
+model1 =lm(bwt~gaweeks+ppbmi+mrace+smoken, data=birthweight)
 model2= lm(bwt~blength+gaweeks, data = birthweight)
 model3= lm(bwt~bhead*blength + bhead*babysex + blength*babysex, data=birthweight)
+
+summary(model1)
+summary(model2)
+summary(model3)
 ```
 
 ### Plot model residuals vs. fitted values for my proposed model (model 1)
@@ -153,24 +157,13 @@ birthweight |>
     title = "Residuals vs Fitted Values ")
 ```
 
-*The slope of this line is ~0, as indicated by the fact it appears horizontal. This indicates a lack of relationship between residuals and predictors and confirms that we can assume homoscedasticity as the variance of the residuals is approximately constant across all levels of the predicted values.*
-
-
-```{r plot of model residuals vs fitted values}
-modelr::add_residuals(birthweight, model) |>
-  ggplot(aes(x = babysex, y = resid)) + geom_violin() +
-  facet_wrap(.~frace)
-
-modelr::add_residuals(birthweight, fit) |>
-  ggplot(aes(x = gaweeks, y = resid)) + geom_violin() +
-  facet_wrap(.~frace)
-```
+The slope of this line is ~0, as indicated by the fact it appears horizontal. This indicates a lack of relationship between residuals and predictors and confirms that we can assume homoscedasticity as the variance of the residuals is approximately constant across all levels of the predicted values.*
 
 ## Comparing to other models using CV
 
 ```{r}
 cv_df =
-  crossv_mc(birthweight, 80)  #80 cross validation runs
+  crossv_mc(birthweight, 100)  #80 cross validation runs
 
 cv_df = 
   cv_df |> 
@@ -179,14 +172,11 @@ cv_df =
     model2  = map(.x = train, ~lm(bwt~blength+gaweeks, data = .x)),
     model3  = map(.x = train, ~lm(bwt~bhead*blength + bhead*babysex + blength*babysex, data = .x))) |>
   mutate(
-    rmse_model= map2_dbl(.x=model1, .y=test, ~rmse(model = .x, data = .y)),
+    rmse_model1= map2_dbl(.x=model1, .y=test, ~rmse(model = .x, data = .y)),
     rmse_model2= map2_dbl(.x=model2, .y=test, ~rmse(model = .x, data = .y)),
     rmse_model3 = map2_dbl(.x=model3, .y=test, ~rmse(model = .x, data = .y)) 
   ) 
-
-summary(model1)
 ```
-
 
 ```{r}
 cv_df |> 
@@ -201,4 +191,4 @@ cv_df |>
   ggplot(aes(x = model, y = rmse)) + geom_violin()
 ```
 
-*Based on this graph displaying the RMSE of each model, I would conclude that model #3 with interaction terms has the lowest RMSE. 
+Based on this graph displaying the RMSE of each model, I would conclude that model #3 (interaction term model) has the lowest RMSE. Between model 2 and model 3, which both have significantly lower RMSE than model 1, I would choose model #3 as it explains more of the variability in 'bwt' based on R-squared values and has a lower RMSE than model 2. 
