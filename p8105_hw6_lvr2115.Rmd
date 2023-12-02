@@ -111,6 +111,7 @@ birthweight =
     mrace = as.factor(mrace))
 ```
 
+### Full model
 ```{r full model}
 fit = lm(bwt ~ ., data = birthweight)
 
@@ -131,25 +132,19 @@ fit2 = lm(bwt~blength+gaweeks, data=birthweight)
 fit3 = lm(bwt~bhead*blength+bhead*babysex+blength*babysex, data=birthweight)
 ```
 
-Model 1:
+### Plot model residuals vs. fitted values
+
 ```{r}
-birthweight |>
-  add_predictions(fit2) |> 
-  ggplot(aes(x=, y=bwt)) + 
-  geom_point() +
-  geom_line(aes(y=pred), color="red")
+birthweight |> 
+  add_predictions(fit) |>
+  add_residuals(fit) |>
+  ggplot(aes(x = pred, y = resid)) +  geom_point() +
+  geom_smooth(method = "lm") +
+  labs(
+    title = "Residuals vs Fitted Values ")
 ```
 
-
-Model 2:
-```{r}
-birthweight |>
-  add_predictions(fit3) |> 
-  ggplot(aes(y=bwt)) + 
-  geom_point() +
-  geom_line(aes(y=pred), color="red")
-```
-
+*The slope of this line is ~0, as indicated by the fact it appears horizontal. This indicates a lack of relationship between residuals and predictors.*
 
 This model may be based on a hypothesized structure for the factors that underly birthweight, on a data-driven model-building process, or a combination of the two. Describe your modeling process and show a plot of model residuals against fitted values – use add_predictions and add_residuals in making this plot.
 
