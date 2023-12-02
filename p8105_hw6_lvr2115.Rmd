@@ -46,11 +46,15 @@ fit |>
   broom::tidy()
 ```
 
+## Distribution of R-squared
+
+This code uses 5000 bootstrap samples to plot the *distribution of R-squared.*
+
 ```{r dist of r squared with plot}
 #bootstrapping
 weather_r2 = 
   weather_df |> 
-    modelr::bootstrap(n = 500, id="strap_number") |> 
+    modelr::bootstrap(n = 5000, id="strap_number") |> 
     mutate(
      models = map(.x=strap, ~lm(tmax ~ tmin + prcp, data = .x)),
      results = map(.x=models, broom::glance)) |> 
@@ -68,16 +72,21 @@ weather_r2|>
     ci_upper = quantile(r.squared, 0.975))
 ```
 
-The graph shows a left-skewed distribution of R-squared. 
+The graph shows a left-skewed distribution of R-squared with the curve peaking at around 0.920 in a graph ranging from 0.850 to 0.950. The 95% confidence interval is (0.889,	0.941).
+
+## Distribution of log of beta1*beta2
+
+This code uses 5000 bootstrap samples to plot the *distribution of log(beta 1  times beta2).*
 
 ```{r dist of log of b1*b2 with plot, warning=FALSE}
 #bootstrapping
+
 weather_log =
   weather_df |> 
-    modelr::bootstrap(n = 50, id="strap_number") |> 
+    modelr::bootstrap(n = 5000, id="strap_number") |> 
      mutate(
       models = map(.x=strap, ~lm(tmax ~ tmin + prcp, data = .x)),
-      results = map(.x=models, broom::tidy))|>
+      results = map(models, broom::tidy))|>
     select(strap_number, results)|>
     unnest(results) |> 
     pivot_wider(
@@ -85,20 +94,26 @@ weather_log =
       values_from = estimate) |>
     group_by(strap_number) |>
     summarize(
-    log_product=log(tmin*prcp)
+     tmin = first(na.omit(tmin)),
+     prcp = first(na.omit(prcp)),
+     log_product = log(tmin * prcp)
     )
 
 #plot
 weather_log |>
+  filter(log_product!="NaN") |>
   ggplot(aes(x=log_product))+geom_density()
 
 #confidence intervals 
-weather_log|>
+ci_log_product =
+  weather_log |> 
   summarize(
-    ci_lower = quantile(log_product, 0.025, na.rm = TRUE),
-    ci_upper = quantile(log_product, 0.975, na.rm = TRUE)
+    ci_lower = quantile(log_product, 0.025, na.rm=TRUE),
+    ci_upper = quantile(log_product, 0.975,na.rm=TRUE)
   )
 ```
+
+The distribution of log(tmin*prcp) is also remarkably left-skewed with the curve peaking at around -5.5 on a graph of range -13 to -4. The 95% confidence interval is (-8.947,-4.571). 
 
 # Problem 3
 
@@ -124,10 +139,9 @@ I propose that the predictors that could affect bw and should be in my model are
 model =lm(bwt~gaweeks+ppbmi+mrace+smoken, data=birthweight)
 model2= lm(bwt~blength+gaweeks, data = birthweight)
 model3= lm(bwt~bhead*blength + bhead*babysex + blength*babysex, data=birthweight)
-
 ```
 
-### Plot model residuals vs. fitted values
+### Plot model residuals vs. fitted values for my proposed model (model 1)
 
 ```{r}
 birthweight |> 
@@ -137,10 +151,9 @@ birthweight |>
   geom_smooth(method = "lm") +
   labs(
     title = "Residuals vs Fitted Values ")
-
 ```
 
-*The slope of this line is ~0, as indicated by the fact it appears horizontal. This indicates a lack of relationship between residuals and predictors.*
+*The slope of this line is ~0, as indicated by the fact it appears horizontal. This indicates a lack of relationship between residuals and predictors and confirms that we can assume homoscedasticity as the variance of the residuals is approximately constant across all levels of the predicted values.*
 
 
 ```{r plot of model residuals vs fitted values}
