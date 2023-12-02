@@ -46,75 +46,57 @@ fit |>
   broom::tidy()
 ```
 
-Use 5000 bootstrap samples and, for each bootstrap sample, produce estimates of these two quantities. Plot the distribution of your estimates, and describe these in words. Using the 5000 bootstrap estimates, identify the 2.5% and 97.5% quantiles to provide a 95% confidence interval for r^2  and log(β1∗β 2).
+```{r dist of r squared with plot}
+#bootstrapping
+weather_r2 = 
+  weather_df |> 
+    modelr::bootstrap(n = 500, id="strap_number") |> 
+    mutate(
+     models = map(.x=strap, ~lm(tmax ~ tmin + prcp, data = .x)),
+     results = map(.x=models, broom::glance)) |> 
+    select(strap_number, results) |>
+    unnest(results) 
 
-
-```{r dist of r squared}
-weather_df |> 
-  modelr::bootstrap(n = 500, id="strap_number") |> 
-  mutate(
-    models = map(.x=strap, ~lm(tmax ~ tmin + prcp, data = .x)),
-    results = map(.x=models, broom::glance)) |> 
-  select(strap_number, results) |>
-  unnest(results) |> 
+#plot
+weather_r2 |> 
   ggplot(aes(x = r.squared)) + geom_density()
-```
 
-```{r dist of log of b1*b2}
-
-fit |>
-  broom::tidy()|>
-  select(term, estimate) |>
-  mutate(
-    log_product = log(beta1*beta2)
-  )
-
-bootstrap_results =
-weather_df |> 
-  modelr::bootstrap(n = 500, id="strap_number") |> 
-  mutate(
-    models = map(.x=strap, ~lm(tmax ~ tmin + prcp, data = .x)),
-    results = map(.x=models, broom::tidy))|>
-  select(strap_number, results) |>
-  unnest(results) |>
-  pivot_wider(
-    names_from = term, 
-    values_from = estimate) |>
-  mutate(
-    log_product=log(tmin*prcp)
-  )
-
-bootstrap_results |>
+#confidence intervals
+weather_r2|>
   group_by(strap_number) |> 
-  rename(beta1 = tmin, beta2 = prcp) |> 
   summarize(
-    log_product=log(beta1*beta2)
-    )|>
-  knitr::kable(digits = 3)
+    ci_lower = quantile(r.squared, 0.025), 
+    ci_upper = quantile(r.squared, 0.975))
 ```
 
 
-Note: broom::glance() i- r^2 from a fitted regression,
-      broom::tidy() (with some additional wrangling) should help in computing log(β̂ 1∗β̂ 2)
-```{r}
-fit |> 
-  broom::glance() |> 
-  select(r.squared) |> 
-  knitr::kable(digits = 3)
+```{r dist of log of b1*b2 with plot}
+#bootstrapping
+weather_log =
+  weather_df |> 
+    modelr::bootstrap(n = 500, id="strap_number") |> 
+     mutate(
+      models = map(.x=strap, ~lm(tmax ~ tmin + prcp, data = .x)),
+      results = map(.x=models, broom::tidy))|>
+    select(strap_number, results) |>
+    unnest(results) |>
+    pivot_wider(
+      names_from = term, 
+      values_from = estimate) |>
+    group_by(strap_number) |>
+    summarize(
+     log_product=log(tmin*prcp)
+    )
+
+#plot
+weather_log |>
+  ggplot(aes(x=log_product))+geom_density()
+
+#confidence intervals 
+weather_log|>
+  group_by(strap_number) |> 
+  summarize(
+    ci_lower = quantile(log_product, 0.025), 
+    ci_upper = quantile(log_product, 0.975))
 ```
-
-
-```{r}
-
-beta1 = coef(fit)[2]
-beta2 = coef(fit)[3]
-
-fit |>
-  broom::tidy()|>
-  select(term, estimate) |>
-  mutate(
-    log_product = log(beta1*beta2)
-  )
-```
-
 
