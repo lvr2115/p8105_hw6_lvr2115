@@ -68,22 +68,24 @@ weather_r2|>
     ci_upper = quantile(r.squared, 0.975))
 ```
 
-```{r dist of log of b1*b2 with plot}
+The graph shows a left-skewed distribution of R-squared. 
+
+```{r dist of log of b1*b2 with plot, warning=FALSE}
 #bootstrapping
 weather_log =
   weather_df |> 
-    modelr::bootstrap(n = 500, id="strap_number") |> 
+    modelr::bootstrap(n = 50, id="strap_number") |> 
      mutate(
       models = map(.x=strap, ~lm(tmax ~ tmin + prcp, data = .x)),
       results = map(.x=models, broom::tidy))|>
-    select(strap_number, results) |>
-    unnest(results) |>
+    select(strap_number, results)|>
+    unnest(results) |> 
     pivot_wider(
       names_from = term, 
       values_from = estimate) |>
     group_by(strap_number) |>
     summarize(
-     log_product=log(tmin*prcp)
+    log_product=log(tmin*prcp)
     )
 
 #plot
@@ -93,8 +95,9 @@ weather_log |>
 #confidence intervals 
 weather_log|>
   summarize(
-    ci_lower = quantile(log_product, 0.025), 
-    ci_upper = quantile(log_product, 0.975))
+    ci_lower = quantile(log_product, 0.025, na.rm = TRUE),
+    ci_upper = quantile(log_product, 0.975, na.rm = TRUE)
+  )
 ```
 
 # Problem 3
@@ -104,6 +107,7 @@ birthweight =
   read_csv("./birthweight.csv") |>
   janitor::clean_names(case="snake") |>
   drop_na() |>
+  filter(malform!=1) |>
   mutate(
     id = row_number(),
     babysex = as.factor(babysex),
@@ -114,14 +118,12 @@ birthweight =
 
 ## Proposing a model
 
-### Full model
-```{r full model}
-fit = lm(bwt ~ ., data = birthweight)
-         
-fit |>
-  broom::tidy() |>
-  select(term, estimate, p.value) |> 
-  knitr::kable(digits = 3)
+I propose that the predictors that could affect bw and should be in my model are: gestational age at birth (gaweeks), mother's pre-pregnancy BMI (ppbmi), maternal race (mrace) and average number of cigarettes smoked per day during pregnancy (smoken). I removed observations in my dataset in which there is a malformation that could affect birthweight present, as there are only 15 observations in which there is a malformation and I would consider them outliers in this case as malformations are not a predictor of interest. 
+
+```{r}
+model =lm(bwt~gaweeks+ppbmi+mrace+smoken, data=birthweight)
+model2= lm(bwt~blength+gaweeks, data = birthweight)
+model3= lm(bwt~bhead*blength + bhead*babysex + blength*babysex, data=birthweight)
 
 ```
 
@@ -129,20 +131,20 @@ fit |>
 
 ```{r}
 birthweight |> 
-  add_predictions(fit) |>
-  add_residuals(fit) |>
+  add_predictions(model1) |>
+  add_residuals(model1) |>
   ggplot(aes(x = pred, y = resid)) +  geom_point() +
   geom_smooth(method = "lm") +
   labs(
     title = "Residuals vs Fitted Values ")
+
 ```
 
 *The slope of this line is ~0, as indicated by the fact it appears horizontal. This indicates a lack of relationship between residuals and predictors.*
 
-This model may be based on a hypothesized structure for the factors that underly birthweight, on a data-driven model-building process, or a combination of the two. Describe your modeling process and show a plot of model residuals against fitted values – use add_predictions and add_residuals in making this plot.
 
 ```{r plot of model residuals vs fitted values}
-modelr::add_residuals(birthweight, fit) |>
+modelr::add_residuals(birthweight, model) |>
   ggplot(aes(x = babysex, y = resid)) + geom_violin() +
   facet_wrap(.~frace)
 
@@ -160,14 +162,16 @@ cv_df =
 cv_df = 
   cv_df |> 
   mutate(
-    fit  = map(.x = train, ~lm(bwt ~ ., data = .x)),
-    fit2  = map(.x = train, ~lm(bwt~blength+gaweeks, data = .x)),
-    fit3  = map(.x = train, ~lm(bwt~bhead*blength+bhead*babysex+blength*babysex, data = .x))) |>
+    model1  = map(.x = train, ~lm(bwt~gaweeks+ppbmi+mrace+smoken, data = .x)),
+    model2  = map(.x = train, ~lm(bwt~blength+gaweeks, data = .x)),
+    model3  = map(.x = train, ~lm(bwt~bhead*blength + bhead*babysex + blength*babysex, data = .x))) |>
   mutate(
-    rmse_fit= map2_dbl(.x=fit, .y=test, ~rmse(model = .x, data = .y)),
-    rmse_fit2= map2_dbl(.x=fit2, .y=test, ~rmse(model = .x, data = .y)),
-    rmse_fit3 = map2_dbl(.x=fit3, .y=test, ~rmse(model = .x, data = .y)) 
+    rmse_model= map2_dbl(.x=model1, .y=test, ~rmse(model = .x, data = .y)),
+    rmse_model2= map2_dbl(.x=model2, .y=test, ~rmse(model = .x, data = .y)),
+    rmse_model3 = map2_dbl(.x=model3, .y=test, ~rmse(model = .x, data = .y)) 
   ) 
+
+summary(model1)
 ```
 
 
@@ -184,5 +188,4 @@ cv_df |>
   ggplot(aes(x = model, y = rmse)) + geom_violin()
 ```
 
-*Based on this graph displaying the RMSE of each model, I would conclude that the full model or model #3 with interaction terms have relatively similar RMSEs and are my top two choices for a model.*
-
+*Based on this graph displaying the RMSE of each model, I would conclude that model #3 with interaction terms has the lowest RMSE. 
